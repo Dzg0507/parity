@@ -1,0 +1,120 @@
+// Advanced Color Schemes
+export const COLOR_SCHEMES = {
+  cosmic: {
+    primary: ['#667eea', '#764ba2', '#f093fb'],
+    secondary: ['#4facfe', '#00f2fe'],
+    accent: '#ff6b9d',
+    text: '#ffffff',
+    textSecondary: 'rgba(255, 255, 255, 0.8)',
+    cardBg: 'rgba(102, 126, 234, 0.15)',
+    cardBorder: 'rgba(118, 75, 162, 0.3)',
+    shadow: 'rgba(102, 126, 234, 0.4)',
+  },
+  aurora: {
+    primary: ['#00c6ff', '#0072ff', '#00d4ff'],
+    secondary: ['#f093fb', '#f5576c'],
+    accent: '#4ade80',
+    text: '#0a0a0a',
+    textSecondary: 'rgba(10, 10, 10, 0.7)',
+    cardBg: 'rgba(0, 198, 255, 0.08)',
+    cardBorder: 'rgba(0, 114, 255, 0.2)',
+    shadow: 'rgba(0, 198, 255, 0.3)',
+  },
+  sunset: {
+    primary: ['#ff6b6b', '#ee5a6f', '#c44569'],
+    secondary: ['#feca57', '#ff9ff3'],
+    accent: '#ff9068',
+    text: '#2d3436',
+    textSecondary: 'rgba(45, 52, 54, 0.75)',
+    cardBg: 'rgba(255, 107, 107, 0.12)',
+    cardBorder: 'rgba(196, 69, 105, 0.25)',
+    shadow: 'rgba(255, 107, 107, 0.35)',
+  },
+  midnight: {
+    primary: ['#141e30', '#243b55', '#1a2980'],
+    secondary: ['#26d0ce', '#1a2980'],
+    accent: '#f39c12',
+    text: '#ecf0f1',
+    textSecondary: 'rgba(236, 240, 241, 0.7)',
+    cardBg: 'rgba(38, 208, 206, 0.1)',
+    cardBorder: 'rgba(38, 208, 206, 0.3)',
+    shadow: 'rgba(20, 30, 48, 0.6)',
+  },
+  emerald: {
+    primary: ['#11998e', '#38ef7d', '#0ba360'],
+    secondary: ['#667eea', '#764ba2'],
+    accent: '#f093fb',
+    text: '#ffffff',
+    textSecondary: 'rgba(255, 255, 255, 0.85)',
+    cardBg: 'rgba(17, 153, 142, 0.15)',
+    cardBorder: 'rgba(56, 239, 125, 0.3)',
+    shadow: 'rgba(17, 153, 142, 0.4)',
+  },
+  royal: {
+    primary: ['#2c3e50', '#3498db', '#34495e'],
+    secondary: ['#e74c3c', '#c0392b'],
+    accent: '#f39c12',
+    text: '#ecf0f1',
+    textSecondary: 'rgba(236, 240, 241, 0.8)',
+    cardBg: 'rgba(52, 152, 219, 0.12)',
+    cardBorder: 'rgba(52, 152, 219, 0.35)',
+    shadow: 'rgba(44, 62, 80, 0.5)',
+  },
+  neon: {
+    primary: ['#ff0080', '#ff8c00', '#40e0d0'],
+    secondary: ['#7f00ff', '#e100ff'],
+    accent: '#00ff00',
+    text: '#ffffff',
+    textSecondary: 'rgba(255, 255, 255, 0.9)',
+    cardBg: 'rgba(255, 0, 128, 0.1)',
+    cardBorder: 'rgba(255, 140, 0, 0.4)',
+    shadow: 'rgba(255, 0, 128, 0.5)',
+  },
+  ocean: {
+    primary: ['#2E3192', '#1BFFFF', '#00C9FF'],
+    secondary: ['#92FE9D', '#00C9FF'],
+    accent: '#FF6B9D',
+    text: '#0a0a0a',
+    textSecondary: 'rgba(10, 10, 10, 0.7)',
+    cardBg: 'rgba(27, 255, 255, 0.08)',
+    cardBorder: 'rgba(0, 201, 255, 0.25)',
+    shadow: 'rgba(46, 49, 146, 0.35)',
+  },
+};
+
+// Default theme colors (keeping original for backward compatibility)
+export const colors = {
+  primary: '#00d4aa', // Updated to match app's teal
+  primaryLight: '#4dd4b8',
+  primaryDark: '#00b894',
+  secondary: '#2a5298', // Updated to match app's blue
+  secondaryLight: '#4a6fa5',
+  secondaryDark: '#1e3a5f',
+  accent: '#ff6b35', // Updated to match app's orange
+  accentLight: '#ff8a5b',
+  accentDark: '#e55a2b',
+
+  background: 'rgba(42, 82, 152, 0.05)', // Subtle blue wash
+  surface: 'rgba(255, 255, 255, 0.95)', // Semi-transparent white
+  textPrimary: '#2c3e50',
+  textSecondary: '#5a6c7d',
+  textLight: '#ffffff',
+
+  border: 'rgba(0, 212, 170, 0.3)',
+  success: '#00d4aa',
+  warning: '#ff6b35',
+  error: '#e74c3c',
+  info: '#2a5298',
+
+  black: '#000000',
+  white: '#FFFFFF',
+  grey100: '#F5F5F5',
+  grey200: '#EEEEEE',
+  grey300: '#E0E0E0',
+  grey400: '#BDBDBD',
+  grey500: '#9E9E9E',
+  grey600: '#757575',
+  grey700: '#616161',
+  grey800: '#424242',
+  grey900: '#212121',
+};
