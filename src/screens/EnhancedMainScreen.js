@@ -6,7 +6,8 @@ import { theme } from '../theme';
 // Import enhanced components
 import Enhanced3DAvatar from '../components/ai/Enhanced3DAvatar';
 import SocialFeatures from '../components/social/SocialFeatures';
-import EnhancedAnalytics from '../components/analytics/EnhancedAnalytics';
+import AdvancedAnalytics from '../components/analytics/AdvancedAnalytics';
+import EnhancedSocialFeatures from '../components/social/EnhancedSocialFeatures';
 import AccessibilityFeatures from '../components/accessibility/AccessibilityFeatures';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -306,9 +307,9 @@ const EnhancedMainScreen = () => {
           </View>
         );
       case 'analytics':
-        return <EnhancedAnalytics />;
+        return <AdvancedAnalytics />;
       case 'social':
-        return <SocialFeatures />;
+        return <EnhancedSocialFeatures />;
       case 'settings':
         return <AccessibilityFeatures />;
       default:

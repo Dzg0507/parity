@@ -500,6 +500,315 @@ class AdvancedAICoach {
     }
   }
 
+  // 11. ADVANCED: Voice Analysis & Metrics
+  analyzeVoiceMetrics(audioData) {
+    const metrics = {
+      pace: this.calculatePace(audioData),
+      clarity: this.calculateClarity(audioData),
+      confidence: this.calculateConfidence(audioData),
+      emotion: this.detectEmotion(audioData),
+      fillerWords: this.countFillerWords(audioData.transcript),
+      pauses: this.analyzePauses(audioData),
+      volume: this.analyzeVolume(audioData)
+    };
+    
+    return {
+      ...metrics,
+      overallScore: this.calculateOverallScore(metrics),
+      recommendations: this.generateVoiceRecommendations(metrics)
+    };
+  }
+
+  // Calculate speaking pace (words per minute)
+  calculatePace(audioData) {
+    const words = audioData.transcript.split(' ').length;
+    const duration = audioData.duration / 60; // Convert to minutes
+    return Math.round(words / duration);
+  }
+
+  // Calculate speech clarity based on pronunciation and enunciation
+  calculateClarity(audioData) {
+    const baseScore = 75;
+    const fillerPenalty = this.countFillerWords(audioData.transcript) * 2;
+    const pausePenalty = this.analyzePauses(audioData).excessive * 1.5;
+    
+    return Math.max(0, Math.min(100, baseScore - fillerPenalty - pausePenalty));
+  }
+
+  // Calculate confidence based on voice characteristics
+  calculateConfidence(audioData) {
+    const volume = audioData.volume || 0.5;
+    const pace = this.calculatePace(audioData);
+    const clarity = this.calculateClarity(audioData);
+    
+    const volumeScore = Math.min(100, volume * 200);
+    const paceScore = pace >= 120 && pace <= 180 ? 100 : Math.max(0, 100 - Math.abs(pace - 150) * 2);
+    const clarityScore = clarity;
+    
+    return Math.round((volumeScore + paceScore + clarityScore) / 3);
+  }
+
+  // Detect emotion from voice characteristics
+  detectEmotion(audioData) {
+    const pace = this.calculatePace(audioData);
+    const volume = audioData.volume || 0.5;
+    
+    if (pace > 160 && volume > 0.7) return 'excited';
+    if (pace < 100 && volume < 0.4) return 'nervous';
+    if (pace > 140 && volume < 0.5) return 'anxious';
+    if (pace >= 120 && pace <= 160 && volume >= 0.5) return 'confident';
+    
+    return 'neutral';
+  }
+
+  // Count filler words
+  countFillerWords(transcript) {
+    const fillerWords = ['um', 'uh', 'like', 'you know', 'so', 'well', 'actually', 'basically'];
+    const words = transcript.toLowerCase().split(/\s+/);
+    return words.filter(word => fillerWords.includes(word)).length;
+  }
+
+  // Analyze pauses in speech
+  analyzePauses(audioData) {
+    const words = audioData.transcript.split(' ');
+    const longPauses = words.filter(word => word.includes('...') || word.includes('--')).length;
+    
+    return {
+      total: longPauses,
+      excessive: longPauses > 3 ? longPauses - 3 : 0,
+      average: longPauses / words.length
+    };
+  }
+
+  // Analyze volume patterns
+  analyzeVolume(audioData) {
+    return {
+      average: audioData.volume || 0.5,
+      variation: audioData.volumeVariation || 0.2,
+      consistency: audioData.volumeConsistency || 0.8
+    };
+  }
+
+  // Calculate overall speaking score
+  calculateOverallScore(metrics) {
+    const weights = {
+      pace: 0.2,
+      clarity: 0.3,
+      confidence: 0.25,
+      emotion: 0.15,
+      fillerWords: 0.1
+    };
+
+    const paceScore = metrics.pace >= 120 && metrics.pace <= 180 ? 100 : 
+                     Math.max(0, 100 - Math.abs(metrics.pace - 150) * 2);
+    const fillerScore = Math.max(0, 100 - metrics.fillerWords * 10);
+    const emotionScore = this.getEmotionScore(metrics.emotion);
+
+    return Math.round(
+      paceScore * weights.pace +
+      metrics.clarity * weights.clarity +
+      metrics.confidence * weights.confidence +
+      emotionScore * weights.emotion +
+      fillerScore * weights.fillerWords
+    );
+  }
+
+  // Get emotion score (higher is better for communication)
+  getEmotionScore(emotion) {
+    const emotionScores = {
+      'confident': 100,
+      'excited': 85,
+      'neutral': 70,
+      'anxious': 40,
+      'nervous': 30
+    };
+    return emotionScores[emotion] || 50;
+  }
+
+  // Generate personalized recommendations
+  generateVoiceRecommendations(metrics) {
+    const recommendations = [];
+
+    if (metrics.pace < 120) {
+      recommendations.push({
+        type: 'pace',
+        priority: 'high',
+        message: 'Try speaking a bit faster to maintain engagement',
+        tip: 'Practice reading aloud at 140-160 words per minute'
+      });
+    } else if (metrics.pace > 180) {
+      recommendations.push({
+        type: 'pace',
+        priority: 'high',
+        message: 'Slow down slightly for better comprehension',
+        tip: 'Take deliberate pauses between key points'
+      });
+    }
+
+    if (metrics.clarity < 70) {
+      recommendations.push({
+        type: 'clarity',
+        priority: 'high',
+        message: 'Focus on clear pronunciation and enunciation',
+        tip: 'Practice tongue twisters to improve articulation'
+      });
+    }
+
+    if (metrics.confidence < 60) {
+      recommendations.push({
+        type: 'confidence',
+        priority: 'medium',
+        message: 'Work on projecting your voice with more confidence',
+        tip: 'Practice power poses and deep breathing before speaking'
+      });
+    }
+
+    if (metrics.fillerWords > 5) {
+      recommendations.push({
+        type: 'filler_words',
+        priority: 'medium',
+        message: 'Reduce filler words for more professional delivery',
+        tip: 'Practice pausing instead of using "um" or "uh"'
+      });
+    }
+
+    if (metrics.emotion === 'nervous' || metrics.emotion === 'anxious') {
+      recommendations.push({
+        type: 'emotion',
+        priority: 'high',
+        message: 'Focus on calming techniques before important conversations',
+        tip: 'Try 4-7-8 breathing: inhale for 4, hold for 7, exhale for 8'
+      });
+    }
+
+    return recommendations;
+  }
+
+  // 12. ADVANCED: Real-time Coaching with Voice Analysis
+  async generateCoachingResponse(input) {
+    const {
+      transcript,
+      coachingMode = 'communication',
+      personality = 'supportive',
+      sessionData = {},
+      audioData = null
+    } = input;
+
+    // Analyze the input
+    const analysis = audioData ? this.analyzeVoiceMetrics(audioData) : null;
+    
+    // Generate contextual response based on mode
+    let response = '';
+    
+    if (this.initialized) {
+      try {
+        const systemPrompt = `You are an expert communication coach with a ${personality} personality. Provide personalized coaching based on the user's speech and context.
+
+        Coaching Mode: ${coachingMode}
+        Personality: ${personality}
+        
+        Provide specific, actionable feedback that helps improve their communication skills. Be encouraging but direct about areas for improvement.`;
+        
+        const userPrompt = `Transcript: "${transcript}"
+        ${analysis ? `Voice Analysis: ${JSON.stringify(analysis)}` : ''}
+        Session Data: ${JSON.stringify(sessionData)}`;
+
+        const groqResponse = await this.groq.chat.completions.create({
+          model: "qwen/qwen3-32b",
+          messages: [{
+            role: "system",
+            content: systemPrompt
+          }, {
+            role: "user",
+            content: userPrompt
+          }],
+          temperature: 0.7,
+          max_tokens: 300
+        });
+
+        response = groqResponse.choices[0].message.content;
+      } catch (error) {
+        console.warn('Groq coaching failed, using fallback:', error);
+        response = this.generateFallbackCoaching(transcript, analysis, coachingMode, personality);
+      }
+    } else {
+      response = this.generateFallbackCoaching(transcript, analysis, coachingMode, personality);
+    }
+
+    return {
+      text: response,
+      shouldSpeak: true,
+      improvements: analysis?.recommendations || [],
+      insights: this.generatePersonalizedInsights(sessionData, analysis),
+      metrics: analysis,
+      timestamp: Date.now()
+    };
+  }
+
+  // Fallback coaching when AI is not available
+  generateFallbackCoaching(transcript, analysis, coachingMode, personality) {
+    const responses = {
+      supportive: [
+        "I can hear the thought you're putting into this. Let me help you express it even more clearly.",
+        "You're doing great at sharing your perspective. Here's how you might make it even more impactful...",
+        "I appreciate your honesty in sharing this. Let's work together to find the right words."
+      ],
+      professional: [
+        "Your message is clear, but here are some ways to enhance its effectiveness:",
+        "Good structure overall. Consider these refinements for better impact:",
+        "Your communication shows good understanding. Here are specific improvements:"
+      ],
+      friendly: [
+        "Nice work! I have a few ideas that might help you say this even better:",
+        "You're on the right track! Here's what I'm thinking:",
+        "I like where you're going with this. Want to try a different approach?"
+      ]
+    };
+
+    const baseResponse = responses[personality]?.[Math.floor(Math.random() * responses[personality].length)] || 
+                        responses.supportive[0];
+
+    let specificAdvice = '';
+    
+    if (analysis) {
+      if (analysis.clarity < 70) {
+        specificAdvice += "Try speaking more slowly and clearly. ";
+      }
+      if (analysis.confidence < 60) {
+        specificAdvice += "Project your voice with more confidence. ";
+      }
+      if (analysis.fillerWords > 3) {
+        specificAdvice += "Reduce filler words for a more polished delivery. ";
+      }
+    }
+
+    return `${baseResponse} ${specificAdvice}`.trim();
+  }
+
+  // Generate personalized insights based on user history
+  generatePersonalizedInsights(sessionData, analysis) {
+    const insights = [];
+    
+    if (sessionData.feedbackCount > 0) {
+      const improvementRate = sessionData.improvements.length / sessionData.feedbackCount;
+      if (improvementRate > 0.7) {
+        insights.push("You're showing excellent improvement in addressing feedback!");
+      } else if (improvementRate < 0.3) {
+        insights.push("Focus on implementing the specific recommendations for faster progress.");
+      }
+    }
+
+    if (analysis) {
+      if (analysis.overallScore > 80) {
+        insights.push("Your communication skills are really strong! Keep up the great work.");
+      } else if (analysis.overallScore < 50) {
+        insights.push("Don't worry - every expert was once a beginner. Focus on one area at a time.");
+      }
+    }
+
+    return insights;
+  }
+
   generateFallbackBriefing(entries, relationshipType, topic) {
     return {
       keyInsights: ["Focus on understanding each other's perspectives", "Be patient and open-minded"],
