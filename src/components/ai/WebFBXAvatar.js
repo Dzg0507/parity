@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { getFBXPath } from '../../utils/assetLoader';
+import { get3DConfig, getAnimationConfig, optimizeScene, setOptimizationCallback } from '../../utils/performanceOptimizer';
+import { handleError } from '../../utils/errorHandler';
 
 // Web-only FBX Avatar using regular Three.js (like the test file)
 const WebFBXAvatar = ({ 
@@ -361,6 +363,28 @@ const WebFBXAvatar = ({
     }
   };
 
+  // Manual walking animation for when FBX animations don't work
+  const animateWalkingManually = (cycle) => {
+    const { leftUpLeg, rightUpLeg, leftLeg, rightLeg, leftArm, rightArm } = bonesRef.current;
+
+    if (!leftUpLeg || !rightUpLeg) {
+      return;
+    }
+
+    // Walking animation values
+    const hipSwing = Math.sin(cycle) * 0.3;
+    const armSwing = Math.sin(cycle) * 0.4;
+    const kneeBend = Math.abs(Math.sin(cycle * 0.5 + Math.PI / 2)) * 0.4;
+
+    // Apply rotations
+    if (leftUpLeg) leftUpLeg.rotation.x = hipSwing;
+    if (rightUpLeg) rightUpLeg.rotation.x = -hipSwing;
+    if (leftLeg) leftLeg.rotation.x = kneeBend;
+    if (rightLeg) rightLeg.rotation.x = kneeBend;
+    if (leftArm) leftArm.rotation.x = -armSwing;
+    if (rightArm) rightArm.rotation.x = armSwing;
+  };
+
   // Find and store bone references
   const findBones = (fbx) => {
     console.log('🔍 Searching for bones in FBX model...');
@@ -369,42 +393,55 @@ const WebFBXAvatar = ({
         const skeleton = object.skeleton;
         console.log('🔍 Available bones:', skeleton.bones.map(b => b.name));
         
-        // Try multiple naming conventions for arm bones
-        const leftArmNames = [
-          'mixamorigLeftArm', 'mixamorig:LeftArm', 'LeftArm',
-          'LeftShoulder', 'mixamorigLeftShoulder', 'mixamorig:LeftShoulder',
-          'LeftUpperArm', 'mixamorigLeftUpperArm', 'mixamorig:LeftUpperArm'
-        ];
+        // Try multiple naming conventions for all bones
+        const boneNames = {
+          leftArm: [
+            'mixamorigLeftArm', 'mixamorig:LeftArm', 'LeftArm',
+            'LeftShoulder', 'mixamorigLeftShoulder', 'mixamorig:LeftShoulder',
+            'LeftUpperArm', 'mixamorigLeftUpperArm', 'mixamorig:LeftUpperArm'
+          ],
+          rightArm: [
+            'mixamorigRightArm', 'mixamorig:RightArm', 'RightArm',
+            'RightShoulder', 'mixamorigRightShoulder', 'mixamorig:RightShoulder',
+            'RightUpperArm', 'mixamorigRightUpperArm', 'mixamorig:RightUpperArm'
+          ],
+          leftUpLeg: [
+            'mixamorigLeftUpLeg', 'mixamorig:LeftUpLeg', 'LeftUpLeg',
+            'LeftThigh', 'mixamorigLeftThigh', 'mixamorig:LeftThigh'
+          ],
+          rightUpLeg: [
+            'mixamorigRightUpLeg', 'mixamorig:RightUpLeg', 'RightUpLeg',
+            'RightThigh', 'mixamorigRightThigh', 'mixamorig:RightThigh'
+          ],
+          leftLeg: [
+            'mixamorigLeftLeg', 'mixamorig:LeftLeg', 'LeftLeg',
+            'LeftShin', 'mixamorigLeftShin', 'mixamorig:LeftShin'
+          ],
+          rightLeg: [
+            'mixamorigRightLeg', 'mixamorig:RightLeg', 'RightLeg',
+            'RightShin', 'mixamorigRightShin', 'mixamorig:RightShin'
+          ]
+        };
         
-        const rightArmNames = [
-          'mixamorigRightArm', 'mixamorig:RightArm', 'RightArm',
-          'RightShoulder', 'mixamorigRightShoulder', 'mixamorig:RightShoulder',
-          'RightUpperArm', 'mixamorigRightUpperArm', 'mixamorig:RightUpperArm'
-        ];
-        
-        // Find left arm bone
-        for (const name of leftArmNames) {
-          const bone = skeleton.getBoneByName(name);
-          if (bone) {
-            bonesRef.current.leftArm = bone;
-            console.log(`✅ Found left arm bone: ${name}`);
-            break;
-          }
-        }
-        
-        // Find right arm bone
-        for (const name of rightArmNames) {
-          const bone = skeleton.getBoneByName(name);
-          if (bone) {
-            bonesRef.current.rightArm = bone;
-            console.log(`✅ Found right arm bone: ${name}`);
-            break;
+        // Find all bones
+        for (const [boneKey, names] of Object.entries(boneNames)) {
+          for (const name of names) {
+            const bone = skeleton.getBoneByName(name);
+            if (bone) {
+              bonesRef.current[boneKey] = bone;
+              console.log(`✅ Found ${boneKey} bone: ${name}`);
+              break;
+            }
           }
         }
         
         console.log('🦴 Bone search results:', {
           leftArm: !!bonesRef.current.leftArm,
           rightArm: !!bonesRef.current.rightArm,
+          leftUpLeg: !!bonesRef.current.leftUpLeg,
+          rightUpLeg: !!bonesRef.current.rightUpLeg,
+          leftLeg: !!bonesRef.current.leftLeg,
+          rightLeg: !!bonesRef.current.rightLeg,
           totalBones: skeleton.bones.length
         });
       }
@@ -457,27 +494,36 @@ const WebFBXAvatar = ({
     // Load Three.js dynamically
     const loadThreeJS = async () => {
       try {
+        // Check if Three.js is already loaded
+        if (window.THREE) {
+          initThreeJS();
+          return;
+        }
+
         // Load Three.js core
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
           script.onload = resolve;
+          script.onerror = reject;
           document.head.appendChild(script);
         });
 
         // Load fflate (required for FBXLoader)
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.min.js';
           script.onload = resolve;
+          script.onerror = reject;
           document.head.appendChild(script);
         });
 
         // Load FBX Loader
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js';
           script.onload = resolve;
+          script.onerror = reject;
           document.head.appendChild(script);
         });
 
@@ -494,56 +540,102 @@ const WebFBXAvatar = ({
   const initThreeJS = () => {
     console.log('🎯 Initializing Three.js scene...');
     
-    // Create scene (exactly like test file)
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1f2937);
-    sceneRef.current = scene;
-
-    // Create camera (exactly like test file)
-    const camera = new THREE.PerspectiveCamera(75, size / size, 0.1, 1000);
-    camera.position.set(0, 20, 30);
-    camera.lookAt(0, 4, 0);
-    cameraRef.current = camera;
-
-    // Create renderer (exactly like test file)
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(size, size);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    rendererRef.current = renderer;
-
-    // Add renderer to container
-    if (containerRef.current) {
-      containerRef.current.appendChild(renderer.domElement);
+    if (!window.THREE) {
+      console.error('❌ Three.js not loaded');
+      handleError('Three.js not loaded', { component: 'WebFBXAvatar', feature: '3d' });
+      return;
     }
 
-    // Add lighting (exactly like test file)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(2, 10, 5);
-    scene.add(directionalLight);
+    const THREE = window.THREE;
+    
+    try {
+      // Get performance-optimized configuration
+      const config = get3DConfig();
+      const animConfig = getAnimationConfig();
+      
+      // Create scene (exactly like test file)
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1f2937);
+      sceneRef.current = scene;
 
-    // Create clock (exactly like test file)
-    clockRef.current = new THREE.Clock();
+      // Create camera (exactly like test file)
+      const camera = new THREE.PerspectiveCamera(75, size / size, 0.1, 1000);
+      camera.position.set(0, 20, 30);
+      camera.lookAt(0, 4, 0);
+      cameraRef.current = camera;
 
-    // Load FBX model (exactly like test file)
-    loadWalkingFBX(scene, renderer, camera);
+      // Create renderer with performance optimization
+      const renderer = new THREE.WebGLRenderer({ 
+        antialias: config.antialias,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+      renderer.setSize(size, size);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.shadowMap.enabled = config.shadowMapEnabled;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.size.width = config.shadowMapSize;
+      renderer.shadowMap.size.height = config.shadowMapSize;
+      rendererRef.current = renderer;
 
-    // Start animation loop (exactly like test file)
-    const animate = () => {
-      animationIdRef.current = requestAnimationFrame(animate);
-
-      const delta = clockRef.current.getDelta();
-
-      if (mixerRef.current) {
-        mixerRef.current.update(delta);
+      // Add renderer to container
+      if (containerRef.current) {
+        containerRef.current.appendChild(renderer.domElement);
       }
 
-      renderer.render(scene, camera);
-    };
+      // Add optimized lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+      
+      if (config.maxLights > 1) {
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(2, 10, 5);
+        directionalLight.castShadow = config.shadowMapEnabled;
+        if (config.shadowMapEnabled) {
+          directionalLight.shadow.mapSize.width = config.shadowMapSize;
+          directionalLight.shadow.mapSize.height = config.shadowMapSize;
+        }
+        scene.add(directionalLight);
+      }
 
-    animate();
+      // Create clock (exactly like test file)
+      clockRef.current = new THREE.Clock();
+
+      // Optimize scene for performance
+      optimizeScene(scene, renderer, camera);
+
+      // Load FBX model (exactly like test file)
+      loadWalkingFBX(scene, renderer, camera);
+
+      // Start animation loop with performance optimization
+      const animate = () => {
+        animationIdRef.current = requestAnimationFrame(animate);
+
+        const delta = clockRef.current.getDelta();
+
+        if (mixerRef.current) {
+          mixerRef.current.update(delta);
+        }
+
+        // Manual walking animation when walking
+        if (isWalking && !mixerRef.current) {
+          const time = clockRef.current.getElapsedTime();
+          animateWalkingManually(time * 2); // 2x speed for more visible animation
+        } else if (!isWalking && !mixerRef.current) {
+          // Reset to idle pose when not walking
+          setIdlePose();
+        }
+
+        renderer.render(scene, camera);
+      };
+
+      animate();
+      
+    } catch (error) {
+      console.error('❌ Three.js initialization error:', error);
+      handleError(error, { component: 'WebFBXAvatar', feature: '3d' });
+    }
   };
 
   // Auto-load Walking.fbx from server (exactly like test file)
@@ -559,19 +651,37 @@ const WebFBXAvatar = ({
       return;
     }
 
-    const fbxLoader = new THREE.FBXLoader();
-    
-    fbxLoader.load(modelAsset, (fbx) => {
-      loadFBXModel(fbx, 'Walking.fbx', scene);
-    }, undefined, (error) => {
-      console.error('❌ Error loading Walking.fbx:', error);
-      handleError(error);
-    });
+    // Wait for Three.js to be fully loaded
+    const loadFBX = () => {
+      if (!window.THREE || !window.THREE.FBXLoader) {
+        setTimeout(loadFBX, 100);
+        return;
+      }
+
+      const fbxLoader = new window.THREE.FBXLoader();
+      
+      fbxLoader.load(modelAsset, (fbx) => {
+        loadFBXModel(fbx, 'Walking.fbx', scene);
+      }, undefined, (error) => {
+        console.error('❌ Error loading Walking.fbx:', error);
+        handleError(error);
+      });
+    };
+
+    loadFBX();
   };
 
   // Load FBX model (exactly like test file)
   const loadFBXModel = (fbx, fileName, scene) => {
     console.log('FBX model loaded successfully!');
+    
+    if (!window.THREE) {
+      console.error('❌ Three.js not available');
+      handleError('Three.js not available');
+      return;
+    }
+
+    const THREE = window.THREE;
     
     // Add the loaded model to the scene
     fbx.name = 'avatar'; // Set name for easy finding

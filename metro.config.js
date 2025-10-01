@@ -44,4 +44,11 @@ config.transformer = {
 // Add web-specific resolver configuration
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'web.js', 'web.ts', 'web.tsx'];
 
+// Add support for 3D model formats
+config.resolver.assetExts = [
+  ...(config.resolver.assetExts || []),
+  'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp',
+  'glb', 'gltf', 'fbx'  // 3D model formats
+];
+
 module.exports = config;
